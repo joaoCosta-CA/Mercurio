@@ -1,9 +1,18 @@
 # Mercúrio
 
-O Mercúrio consulta atividades autorizadas do Google Classroom e gera
-lembretes locais sem duplicidade. O canal padrão é o terminal; o WhatsApp é
-opcional e usa um serviço intermediário para que o token da Meta nunca seja
-distribuído ao notebook.
+Mercúrio é uma aplicação independente criada para resolver um problema muito
+comum no ambiente universitário: **o esquecimento de prazos e datas de entrega
+de atividades acadêmicas**.
+
+O projeto nasceu da dificuldade de acompanhar prazos longos, inúmeras
+atividades e responsabilidades pessoais. Ele consulta as atividades do
+**Google Classroom** e gera lembretes sem duplicidade. O canal padrão é o
+terminal; o WhatsApp é opcional e usa um serviço intermediário para que o token
+da Meta nunca seja distribuído ao notebook.
+
+O objetivo do Mercúrio não é substituir a organização pessoal de cada
+estudante, mas facilitar esse processo e diminuir as chances de uma entrega
+importante ser esquecida.
 
 ## Desenvolvimento
 
@@ -61,4 +70,3 @@ serviço do usuário. Instale-os em `~/.config/systemd/user/` ou use
 
 O núcleo local é funcional e testável com fixtures. Integrações reais exigem
 credenciais do Google/Meta e validação das políticas atuais antes de produção.
-
