@@ -5,7 +5,7 @@ import json
 import shutil
 import subprocess
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -42,6 +42,11 @@ def parser() -> argparse.ArgumentParser:
 
     activities = commands.add_parser("atividades", help="listar atividades")
     activities.add_argument("--json", action="store_true")
+    activities.add_argument(
+        "--ativas",
+        action="store_true",
+        help="mostrar apenas atividades pendentes com prazo futuro",
+    )
 
     notices = commands.add_parser("avisos", help="calcular e emitir avisos")
     notices.add_argument("--at", help="instante ISO-8601 para simulação")
@@ -181,6 +186,15 @@ def run(args: argparse.Namespace) -> int:
         return 0
     if args.command == "atividades":
         rows = db.assignments()
+        if args.ativas:
+            active_now = datetime.now(UTC)
+            rows = [
+                row
+                for row in rows
+                if row[2].reminder_eligible
+                and row[2].due_utc is not None
+                and row[2].due_utc > active_now
+            ]
         if args.json:
             result = []
             for _, course_name, assignment in rows:

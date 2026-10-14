@@ -3,6 +3,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -135,3 +136,12 @@ class CliTests(unittest.TestCase):
             code, _, error = self.invoke(["sync", "--fixture", str(self.fixture)])
         self.assertEqual(code, 1)
         self.assertIn("ocupado", error)
+
+    def test_active_filter_hides_expired_and_delivered_assignments(self) -> None:
+        self.invoke(["setup", "--timezone", "UTC"])
+        self.invoke(["sync", "--fixture", str(self.fixture)])
+        with patch("mercurio.cli.datetime") as clock:
+            clock.now.return_value = datetime(2026, 10, 17, tzinfo=UTC)
+            code, output, _ = self.invoke(["atividades", "--ativas", "--json"])
+        self.assertEqual(code, 0)
+        self.assertEqual([item["title"] for item in json.loads(output)], ["Lista de Laplace"])
