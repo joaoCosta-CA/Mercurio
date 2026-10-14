@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -46,3 +47,8 @@ class GoogleAuthTests(unittest.TestCase):
             _validate_granted_scopes({SCOPES[0], "https://example.invalid/write"})
         with self.assertRaisesRegex(RuntimeError, "não concedeu"):
             _validate_granted_scopes({SCOPES[0]})
+
+    def test_effective_scope_shape_can_be_stored_in_credentials(self) -> None:
+        granted = {SCOPES[0], STUDENT_SUBMISSIONS_SCOPE}
+        serialized = json.dumps({"refresh_token": "not-a-real-token", "scopes": sorted(granted)})
+        self.assertEqual(set(json.loads(serialized)["scopes"]), granted)

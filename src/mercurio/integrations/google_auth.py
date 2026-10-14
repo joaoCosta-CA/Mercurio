@@ -52,7 +52,13 @@ def login(client_secrets: Path, paths: Paths | None = None) -> Any:
             os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = previous_relax
     granted = set(credentials.scopes or SCOPES)
     _validate_granted_scopes(granted)
-    payload = credentials.to_json()
+    # `Credentials.to_json()` pode preservar os escopos originalmente pedidos,
+    # mesmo quando o servidor devolve uma substituição válida. Persistimos os
+    # escopos efetivamente concedidos para que a renovação do token não peça a
+    # permissão antiga em execuções futuras do timer.
+    credential_data = json.loads(credentials.to_json())
+    credential_data["scopes"] = sorted(granted)
+    payload = json.dumps(credential_data)
     paths.ensure()
     try:
         import keyring
