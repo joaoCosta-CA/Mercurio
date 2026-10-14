@@ -9,14 +9,13 @@ from urllib.request import Request, urlopen
 
 from mercurio.config import Paths
 
-SCOPES = [
-    "https://www.googleapis.com/auth/classroom.courses.readonly",
-    "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
-]
-
 STUDENT_SUBMISSIONS_SCOPE = (
     "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly"
 )
+SCOPES = [
+    "https://www.googleapis.com/auth/classroom.courses.readonly",
+    STUDENT_SUBMISSIONS_SCOPE,
+]
 ALLOWED_GRANTED_SCOPES = {*SCOPES, STUDENT_SUBMISSIONS_SCOPE}
 
 
@@ -28,7 +27,7 @@ def _validate_granted_scopes(granted: set[str]) -> None:
             + ", ".join(sorted(unexpected))
         )
     courses_scope = "https://www.googleapis.com/auth/classroom.courses.readonly"
-    academic_scopes = {SCOPES[1], STUDENT_SUBMISSIONS_SCOPE}
+    academic_scopes = {STUDENT_SUBMISSIONS_SCOPE}
     if courses_scope not in granted or not granted.intersection(academic_scopes):
         raise RuntimeError("o Google não concedeu todas as permissões de leitura necessárias")
 
@@ -40,9 +39,8 @@ def login(client_secrets: Path, paths: Paths | None = None) -> Any:
     except ImportError as exc:
         raise RuntimeError("instale o extra google: pip install -e '.[google]'") from exc
     flow = InstalledAppFlow.from_client_secrets_file(str(client_secrets), SCOPES)
-    # O Google pode trocar o escopo legado de coursework pelo escopo mais estreito
-    # de submissões. OAuthlib trata isso como erro por padrão, então relaxamos a
-    # comparação apenas durante a troca e validamos explicitamente o resultado.
+    # OAuthlib compara literalmente a lista retornada pelo servidor. Mantemos a
+    # comparação relaxada apenas durante a troca e validamos o resultado abaixo.
     previous_relax = os.environ.get("OAUTHLIB_RELAX_TOKEN_SCOPE")
     os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
     try:
