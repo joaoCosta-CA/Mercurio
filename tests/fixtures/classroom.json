@@ -1,0 +1,26 @@
+{
+  "courses": [
+    {"id": "course-1", "name": "Equações Diferenciais", "courseState": "ACTIVE"}
+  ],
+  "courseWork": [
+    {
+      "id": "work-1",
+      "courseId": "course-1",
+      "title": "Lista de Laplace",
+      "alternateLink": "https://classroom.google.com/example",
+      "dueDate": {"year": 2026, "month": 10, "day": 18},
+      "dueTime": {"hours": 15, "minutes": 0}
+    },
+    {
+      "id": "work-2",
+      "courseId": "course-1",
+      "title": "Leitura sem horário",
+      "dueDate": {"year": 2026, "month": 10, "day": 20}
+    }
+  ],
+  "submissions": [
+    {"courseId": "course-1", "courseWorkId": "work-1", "state": "CREATED"},
+    {"courseId": "course-1", "courseWorkId": "work-2", "state": "NEW"}
+  ]
+}
+

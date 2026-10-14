@@ -1,0 +1,10 @@
+[Unit]
+Description=Verificação periódica Mercúrio
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
