@@ -4,5 +4,4 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/mercurio sync --notify
-
+ExecStart=/usr/bin/mercurio sync --notify --channel desktop

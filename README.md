@@ -62,9 +62,25 @@ WhatsApp. Veja `docs/PRIVACIDADE.md`.
 
 ## Serviço automático
 
-Os arquivos em `packaging/systemd/` executam `mercurio sync --notify` como
-serviço do usuário. Instale-os em `~/.config/systemd/user/` ou use
+Os arquivos em `packaging/systemd/` executam `mercurio sync --notify --channel desktop`
+como serviço do usuário. Instale-os em `~/.config/systemd/user/` ou use
 `mercurio start`; não execute o Mercúrio como root.
+
+## Notificações desktop no Linux
+
+O canal padrão de lembretes é `desktop` e usa o comando `notify-send`, fornecido
+normalmente pelo pacote `libnotify`. Ele requer uma sessão gráfica do usuário
+com um servidor de notificações ativo. Teste-o manualmente com:
+
+```bash
+mercurio avisos --channel desktop
+```
+
+Caso a sessão gráfica ou o D-Bus não estejam disponíveis, o aviso fica marcado
+como falho e será tentado novamente pelo próximo ciclo do timer. Consulte
+`mercurio avisos --historico` e `journalctl --user -u mercurio.service` para
+diagnóstico. Os canais `console`, `desktop`, `whatsapp` e `all` podem ser
+selecionados com `--channel`.
 
 ## Situação
 

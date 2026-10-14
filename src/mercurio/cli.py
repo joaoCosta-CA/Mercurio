@@ -15,6 +15,7 @@ from mercurio.integrations.google_auth import has_credentials, load_credentials,
 from mercurio.locking import process_lock
 from mercurio.notifications.base import Notifier
 from mercurio.notifications.console import ConsoleNotifier
+from mercurio.notifications.desktop import DesktopNotifier
 from mercurio.notifications.whatsapp import WhatsAppNotifier
 from mercurio.progress import ProgressIndicator
 from mercurio.services import deliver_pending, evaluate_reminders, synchronize
@@ -38,7 +39,9 @@ def parser() -> argparse.ArgumentParser:
     sync = commands.add_parser("sync", help="sincronizar atividades")
     sync.add_argument("--fixture", type=Path)
     sync.add_argument("--notify", action="store_true")
-    sync.add_argument("--channel", choices=("console", "whatsapp", "all"), default="console")
+    sync.add_argument(
+        "--channel", choices=("console", "desktop", "whatsapp", "all"), default="desktop"
+    )
 
     activities = commands.add_parser("atividades", help="listar atividades")
     activities.add_argument("--json", action="store_true")
@@ -50,7 +53,9 @@ def parser() -> argparse.ArgumentParser:
 
     notices = commands.add_parser("avisos", help="calcular e emitir avisos")
     notices.add_argument("--at", help="instante ISO-8601 para simulação")
-    notices.add_argument("--channel", choices=("console", "whatsapp", "all"), default="console")
+    notices.add_argument(
+        "--channel", choices=("console", "desktop", "whatsapp", "all"), default="desktop"
+    )
     notices.add_argument(
         "--historico",
         action="store_true",
@@ -98,12 +103,14 @@ def _notify(
     db: Database, settings: Settings, channel: str, now: datetime | None = None
 ) -> tuple[int, int, int]:
     created = accepted = failed = 0
-    channels = ("console", "whatsapp") if channel == "all" else (channel,)
+    channels = ("console", "desktop", "whatsapp") if channel == "all" else (channel,)
     for selected in channels:
         created += evaluate_reminders(db, settings, now, selected)
         notifier: Notifier
         if selected == "console":
             notifier = ConsoleNotifier(settings.timezone)
+        elif selected == "desktop":
+            notifier = DesktopNotifier(settings.timezone)
         else:
             if not all(
                 (
@@ -137,7 +144,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart={executable} sync --notify
+ExecStart={executable} sync --notify --channel desktop
 """
     timer = """[Unit]
 Description=Verificação periódica Mercúrio

@@ -62,9 +62,14 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("horário indefinido", output)
 
-        code, output, _ = self.invoke(["avisos", "--at", "2026-10-15T15:00:00+00:00"])
+        with patch("mercurio.cli.DesktopNotifier") as notifier:
+            notifier.return_value.send.return_value = SimpleNamespace(
+                accepted=True, provider_id="desktop:1", error=None
+            )
+            code, output, _ = self.invoke(["avisos", "--at", "2026-10-15T15:00:00+00:00"])
         self.assertEqual(code, 0)
-        self.assertIn("Lembrete acadêmico", output)
+        self.assertIn("1 novo(s); 1 emitido(s)", output)
+        notifier.assert_called_once_with("UTC")
 
         code, output, _ = self.invoke(["avisos", "--historico"])
         self.assertEqual(code, 0)

@@ -10,6 +10,7 @@ from unittest.mock import patch
 from mercurio.domain.models import EventState, NotificationEvent
 from mercurio.locking import process_lock
 from mercurio.notifications.console import ConsoleNotifier
+from mercurio.notifications.desktop import DesktopNotifier
 from mercurio.notifications.whatsapp import WhatsAppNotifier
 
 
@@ -34,6 +35,37 @@ class NotificationAndLockTests(unittest.TestCase):
             result = ConsoleNotifier("UTC").send(event())
         self.assertTrue(result.accepted)
         self.assertIn("Matemática", output.getvalue())
+
+    def test_desktop_message_uses_notification_bus(self) -> None:
+        completed = SimpleNamespace(returncode=0, stdout="", stderr="")
+        with (
+            patch("mercurio.notifications.desktop.os.environ.copy", return_value={}),
+            patch("mercurio.notifications.desktop.os.getuid", return_value=1000),
+            patch("mercurio.notifications.desktop.subprocess.run", return_value=completed) as run,
+        ):
+            result = DesktopNotifier("UTC").send(event())
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.provider_id, "desktop:1")
+        command = run.call_args.args[0]
+        self.assertIn("--app-name=Mercúrio", command)
+        self.assertIn("Matemática", command[-1])
+        self.assertEqual(
+            run.call_args.kwargs["env"]["DBUS_SESSION_BUS_ADDRESS"], "unix:path=/run/user/1000/bus"
+        )
+
+    def test_desktop_failure_is_reported(self) -> None:
+        with patch(
+            "mercurio.notifications.desktop.subprocess.run",
+            return_value=SimpleNamespace(returncode=1, stdout="", stderr="D-Bus indisponível"),
+        ):
+            result = DesktopNotifier("UTC").send(event())
+        self.assertFalse(result.accepted)
+        self.assertIn("D-Bus indisponível", result.error)
+
+        with patch("mercurio.notifications.desktop.subprocess.run", side_effect=FileNotFoundError):
+            result = DesktopNotifier("UTC").send(event())
+        self.assertFalse(result.accepted)
+        self.assertIn("não está instalado", result.error)
 
     def test_whatsapp_success_and_failure(self) -> None:
         response = SimpleNamespace(
