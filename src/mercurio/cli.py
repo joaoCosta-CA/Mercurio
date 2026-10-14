@@ -51,6 +51,11 @@ def parser() -> argparse.ArgumentParser:
     notices = commands.add_parser("avisos", help="calcular e emitir avisos")
     notices.add_argument("--at", help="instante ISO-8601 para simulação")
     notices.add_argument("--channel", choices=("console", "whatsapp", "all"), default="console")
+    notices.add_argument(
+        "--historico",
+        action="store_true",
+        help="mostrar histórico de avisos, sem gerar novos eventos",
+    )
 
     commands.add_parser("status", help="mostrar estado local")
     commands.add_parser("start", help="habilitar timer systemd do usuário")
@@ -224,6 +229,18 @@ def run(args: argparse.Namespace) -> int:
                 print(f"{course_name} · {assignment.title} · {due} · {assignment.submission_state}")
         return 0
     if args.command == "avisos":
+        if args.historico:
+            events = db.event_history()
+            if not events:
+                print("Nenhum aviso registrado.")
+                return 0
+            for event in events:
+                print(
+                    f"{event['state']} · {event['milestone_minutes']} min · "
+                    f"{event['course_name']} · {event['title']} · "
+                    f"prazo {event['due_utc']} · canal {event['channel']}"
+                )
+            return 0
         now = datetime.fromisoformat(args.at) if args.at else None
         created, accepted, failed = _notify(db, settings, args.channel, now)
         print(f"{created} novo(s); {accepted} emitido(s); {failed} falha(s).")

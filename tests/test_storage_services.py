@@ -95,6 +95,15 @@ class StorageServiceTests(unittest.TestCase):
         self.assertEqual(deliver_pending(self.db, FakeNotifier(False)), (0, 1))
         self.assertEqual(deliver_pending(self.db, FakeNotifier(True)), (1, 0))
 
+    def test_event_history_includes_delivery_state(self) -> None:
+        now = datetime(2026, 10, 14, 12, tzinfo=UTC)
+        synchronize(self.db, FakeSource(now + timedelta(hours=2)))
+        evaluate_reminders(self.db, self.settings, now)
+        deliver_pending(self.db, FakeNotifier())
+        history = self.db.event_history()
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]["state"], EventState.CONFIRMED.value)
+
     def test_removed_assignment_is_hidden_and_event_cancelled(self) -> None:
         now = datetime(2026, 10, 14, 12, tzinfo=UTC)
         synchronize(self.db, FakeSource(now + timedelta(days=1)))

@@ -343,6 +343,19 @@ class Database:
             for row in rows
         ]
 
+    def event_history(self, limit: int = 50) -> list[sqlite3.Row]:
+        with self.transaction() as db:
+            rows = db.execute(
+                """SELECT e.id, e.milestone_minutes, e.due_utc, e.channel, e.state,
+                e.created_at, e.sent_at, e.last_error, a.title, c.name AS course_name
+                FROM notification_event e
+                JOIN assignment a ON a.id=e.assignment_id
+                JOIN course c ON c.id=a.course_id
+                ORDER BY e.created_at DESC LIMIT ?""",
+                (limit,),
+            ).fetchall()
+            return list(rows)
+
     def update_event(
         self,
         event_id: int,

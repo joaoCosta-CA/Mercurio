@@ -66,6 +66,11 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("Lembrete acadêmico", output)
 
+        code, output, _ = self.invoke(["avisos", "--historico"])
+        self.assertEqual(code, 0)
+        self.assertIn("Lista de Laplace", output)
+        self.assertIn("confirmado", output)
+
         code, output, _ = self.invoke(["status"])
         self.assertEqual(code, 0)
         self.assertIn("Última sincronização", output)
