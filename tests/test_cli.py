@@ -131,6 +131,22 @@ class CliTests(unittest.TestCase):
             self.assertEqual(systemctl.call_count, 2)
             self.assertEqual(self.invoke(["stop"])[0], 0)
 
+    def test_tui_is_opened_without_command_or_explicitly(self) -> None:
+        with (
+            patch("mercurio.cli._interactive_terminal", return_value=True),
+            patch("mercurio.cli.MercurioApp") as application,
+        ):
+            self.assertEqual(self.invoke([])[0], 0)
+            self.assertEqual(self.invoke(["tui"])[0], 0)
+        self.assertEqual(application.call_count, 2)
+        self.assertEqual(application.return_value.run.call_count, 2)
+
+    def test_tui_requires_an_interactive_terminal(self) -> None:
+        with patch("mercurio.cli._interactive_terminal", return_value=False):
+            code, _, error = self.invoke([])
+        self.assertEqual(code, 1)
+        self.assertIn("terminal interativo", error)
+
     def test_data_erase_requires_confirmation(self) -> None:
         self.invoke(["setup"])
         code, _, error = self.invoke(["dados", "apagar", "--confirmar", "não"])
@@ -153,5 +169,25 @@ class CliTests(unittest.TestCase):
         with patch("mercurio.cli.datetime") as clock:
             clock.now.return_value = datetime(2026, 10, 17, tzinfo=UTC)
             code, output, _ = self.invoke(["atividades", "--ativas", "--json"])
+        self.assertEqual(code, 0)
+        self.assertEqual([item["title"] for item in json.loads(output)], ["Lista de Laplace"])
+
+    def test_course_filter_is_case_insensitive_and_composable(self) -> None:
+        self.invoke(["setup", "--timezone", "UTC"])
+        self.invoke(["sync", "--fixture", str(self.fixture)])
+
+        code, output, _ = self.invoke(["atividades", "--disciplina", "EQUAÇÕES", "--json"])
+        self.assertEqual(code, 0)
+        self.assertEqual(len(json.loads(output)), 2)
+
+        code, output, _ = self.invoke(["atividades", "--disciplina", "Física", "--json"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(output), [])
+
+        with patch("mercurio.cli.datetime") as clock:
+            clock.now.return_value = datetime(2026, 10, 17, tzinfo=UTC)
+            code, output, _ = self.invoke(
+                ["atividades", "--disciplina", "equações", "--ativas", "--json"]
+            )
         self.assertEqual(code, 0)
         self.assertEqual([item["title"] for item in json.loads(output)], ["Lista de Laplace"])

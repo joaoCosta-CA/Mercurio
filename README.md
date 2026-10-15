@@ -26,12 +26,18 @@ mercurio --help
 python -m unittest discover -s tests -v
 ```
 
+Execute apenas `mercurio` em um terminal interativo para abrir o painel TUI.
+Ele mostra atividades ativas, filtros por disciplina e histórico de avisos;
+use `r` para sincronizar e `?` para ver os atalhos. Os subcomandos continuam
+disponíveis para automação, como `mercurio sync` e `mercurio start`.
+
 Para começar sem credenciais externas:
 
 ```bash
 PYTHONPATH=src python -m mercurio setup --non-interactive
 PYTHONPATH=src python -m mercurio sync --fixture tests/fixtures/classroom.json
 PYTHONPATH=src python -m mercurio atividades
+PYTHONPATH=src python -m mercurio atividades --disciplina "Equações Diferenciais"
 PYTHONPATH=src python -m mercurio avisos --at 2026-10-14T12:00:00+00:00
 ```
 

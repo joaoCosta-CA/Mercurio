@@ -20,11 +20,13 @@ from mercurio.notifications.whatsapp import WhatsAppNotifier
 from mercurio.progress import ProgressIndicator
 from mercurio.services import deliver_pending, evaluate_reminders, synchronize
 from mercurio.storage.sqlite import Database
+from mercurio.tui import MercurioApp
 
 
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(prog="mercurio", description="Lembretes do Google Classroom")
-    commands = root.add_subparsers(dest="command", required=True)
+    commands = root.add_subparsers(dest="command")
+    commands.add_parser("tui", help="abrir painel interativo no terminal")
     setup = commands.add_parser("setup", help="configurar preferências locais")
     setup.add_argument("--timezone", default="America/Sao_Paulo")
     setup.add_argument("--non-interactive", action="store_true")
@@ -49,6 +51,10 @@ def parser() -> argparse.ArgumentParser:
         "--ativas",
         action="store_true",
         help="mostrar apenas atividades pendentes com prazo futuro",
+    )
+    activities.add_argument(
+        "--disciplina",
+        help="filtrar pelo nome da disciplina, sem diferenciar maiúsculas e minúsculas",
     )
 
     notices = commands.add_parser("avisos", help="calcular e emitir avisos")
@@ -198,6 +204,9 @@ def run(args: argparse.Namespace) -> int:
         return 0
     if args.command == "atividades":
         rows = db.assignments()
+        if args.disciplina:
+            query = args.disciplina.casefold()
+            rows = [row for row in rows if query in row[1].casefold()]
         if args.ativas:
             active_now = datetime.now(UTC)
             rows = [
@@ -352,9 +361,25 @@ def run(args: argparse.Namespace) -> int:
     return 2
 
 
+def _interactive_terminal() -> bool:
+    return bool(sys.stdin.isatty() and sys.stdout.isatty())
+
+
+def _run_tui() -> int:
+    if not _interactive_terminal():
+        print("erro: a TUI requer um terminal interativo; use `mercurio --help`", file=sys.stderr)
+        return 1
+    paths, settings, database = _context()
+    MercurioApp(paths, settings, database).run()
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     try:
-        return run(parser().parse_args(argv))
+        args = parser().parse_args(argv)
+        if args.command in {None, "tui"}:
+            return _run_tui()
+        return run(args)
     except (RuntimeError, ValueError, OSError) as exc:
         print(f"erro: {exc}", file=sys.stderr)
         return 1
