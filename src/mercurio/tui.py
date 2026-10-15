@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import webbrowser
 from datetime import UTC, datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from rich.markup import escape
@@ -15,12 +17,33 @@ from textual.widgets import DataTable, Footer, Input, OptionList, Static
 from mercurio.config import Paths, Settings
 from mercurio.domain.models import Assignment
 from mercurio.integrations.classroom import GoogleClassroom
-from mercurio.integrations.google_auth import has_credentials, load_credentials
+from mercurio.integrations.google_auth import has_credentials, load_credentials, login
 from mercurio.locking import process_lock
 from mercurio.services import synchronize
 from mercurio.storage.sqlite import Database
 
 type AssignmentRow = tuple[int, str, Assignment]
+
+
+def find_client_secrets(project_root: Path | None = None) -> Path:
+    """Localiza o cliente OAuth da TUI sem registrar seu conteúdo em saída alguma."""
+    configured = os.environ.get("MERCURIO_CLIENT_SECRETS")
+    if configured:
+        candidate = Path(configured).expanduser()
+        if candidate.is_file():
+            return candidate
+        raise RuntimeError("MERCURIO_CLIENT_SECRETS não aponta para um arquivo válido")
+
+    root = project_root or Path(__file__).resolve().parents[2]
+    candidates = sorted((root / "docs").glob("client_secret*.json"))
+    if len(candidates) == 1:
+        return candidates[0]
+    if not candidates:
+        raise RuntimeError(
+            "cliente OAuth não encontrado; defina MERCURIO_CLIENT_SECRETS ou use "
+            "`mercurio auth login --client-secrets /caminho/cliente.json`"
+        )
+    raise RuntimeError("há mais de um client_secret em docs; defina MERCURIO_CLIENT_SECRETS")
 
 
 class MercurioApp(App[None]):
@@ -56,6 +79,15 @@ class MercurioApp(App[None]):
     DataTable { height: 1fr; background: $surface; color: $foreground; }
     DataTable > .datatable--header { background: #33372B; color: $primary; text-style: bold; }
     DataTable > .datatable--cursor { background: #464832; color: #F8DBA5; text-style: bold; }
+    DataTable {
+        scrollbar-background: $background;
+        scrollbar-background-hover: #282C24;
+        scrollbar-background-active: #33372B;
+        scrollbar-color: #8D7853;
+        scrollbar-color-hover: $primary;
+        scrollbar-color-active: #F8DBA5;
+        scrollbar-corner-color: $background;
+    }
     #history-table { display: none; }
     #details { height: 8; padding: 1 2; margin-top: 1; }
     Footer { background: #25281F; color: $foreground; }
@@ -149,6 +181,20 @@ class MercurioApp(App[None]):
             return "AMANHÃ"
         return f"EM {days} DIAS"
 
+    @staticmethod
+    def _display_state(assignment: Assignment) -> str:
+        if assignment.submission_state.value == "TURNED_IN":
+            return "ENTREGUE"
+        if assignment.submission_state.value == "RETURNED":
+            return "DEVOLVIDA"
+        return "NÃO ENTREGUE"
+
+    @staticmethod
+    def _truncate(value: str, limit: int = 20) -> str:
+        if len(value) <= limit:
+            return value
+        return value[: limit - 3] + "..."
+
     def refresh_data(self) -> None:
         rows = self.database.assignments()
         courses = sorted({course_name for _, course_name, _ in rows}, key=str.casefold)
@@ -167,10 +213,10 @@ class MercurioApp(App[None]):
             key = str(assignment_id)
             self._visible_assignments[key] = (assignment_id, course_name, assignment)
             table.add_row(
-                course_name,
-                assignment.title,
+                self._truncate(course_name),
+                self._truncate(assignment.title),
                 self._deadline_label(assignment),
-                assignment.submission_state.value,
+                self._display_state(assignment),
                 key=key,
             )
         self._refresh_history()
@@ -187,8 +233,8 @@ class MercurioApp(App[None]):
             table.add_row(
                 str(event["state"]),
                 f"{event['milestone_minutes']} min",
-                str(event["course_name"]),
-                str(event["title"]),
+                self._truncate(str(event["course_name"])),
+                self._truncate(str(event["title"])),
                 str(event["channel"]),
             )
 
@@ -214,7 +260,7 @@ class MercurioApp(App[None]):
             "[bold #E4B668]DETALHES DA ATIVIDADE[/]\n"
             f"[bold]{escape(assignment.title)}[/]   •   {escape(course_name)}\n"
             f"Prazo: {self._format_due(assignment)}   |   "
-            f"Estado: {escape(assignment.submission_state.value)}\n"
+            f"Estado: {self._display_state(assignment)}\n"
             f"[dim]{link_hint}[/]"
         )
 
@@ -302,6 +348,14 @@ class MercurioApp(App[None]):
     @work(thread=True, exclusive=True)
     def action_sync(self) -> None:
         try:
+            if not has_credentials(self.paths):
+                client_secrets = find_client_secrets()
+                self.call_from_thread(
+                    self.notify,
+                    "Abrindo o navegador para autorizar a conta Google...",
+                    timeout=10,
+                )
+                login(client_secrets, self.paths)
             credentials = load_credentials(self.paths)
             with process_lock(self.paths.lock_file):
                 courses, assignments = synchronize(self.database, GoogleClassroom(credentials))

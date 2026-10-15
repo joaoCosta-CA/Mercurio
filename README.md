@@ -30,6 +30,10 @@ Execute apenas `mercurio` em um terminal interativo para abrir o painel TUI.
 Ele mostra atividades ativas, filtros por disciplina e histórico de avisos;
 use `r` para sincronizar e `?` para ver os atalhos. Os subcomandos continuam
 disponíveis para automação, como `mercurio sync` e `mercurio start`.
+Se ainda não houver uma conta autorizada, `r` abre o navegador para o mesmo
+fluxo OAuth de `mercurio auth login`. A TUI procura um único
+`docs/client_secret*.json`; em instalações externas, informe o caminho com
+`MERCURIO_CLIENT_SECRETS=/caminho/client_secret.json mercurio`.
 
 Para começar sem credenciais externas:
 
